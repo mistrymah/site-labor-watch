@@ -6,7 +6,6 @@ const config: CapacitorConfig = {
   appName: 'site-labor-watch',
   webDir: 'dist',
   server: {
-    url: "https://28359371-72e1-4d29-87a7-233f7c4c1615.lovableproject.com?forceHideBadge=true",
     cleartext: true
   },
   plugins: {
