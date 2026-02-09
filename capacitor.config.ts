@@ -1,7 +1,8 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
+
 const config: CapacitorConfig = {
-  appId: 'app.lovable.2835937172e14d2987a7233f7c4c1615',
+  appId: 'com.contractor.app',
   appName: 'site-labor-watch',
   webDir: 'dist',
   server: {

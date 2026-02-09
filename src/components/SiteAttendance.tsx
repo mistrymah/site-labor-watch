@@ -1,108 +1,122 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ArrowLeft, CheckCircle2, XCircle, Clock, Users, Calendar as CalendarIcon, Plus, BarChart3, IndianRupee } from "lucide-react";
-import { format } from "date-fns";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, CheckCircle2, XCircle, Calendar as CalendarIcon, UserPlus, Trash2, IndianRupee, FileText, Download, TrendingUp, TrendingDown, Plus, ChevronLeft, ChevronRight } from "lucide-react";
+import { format, addDays, subDays } from "date-fns";
 import { cn } from "@/lib/utils";
-import WorkerManagement from "./WorkerManagement";
-import AttendanceReports from "./AttendanceReports";
-
-interface Site {
-  id: string;
-  name: string;
-  location: string;
-  totalWorkers: number;
-  presentToday: number;
-  status: "active" | "inactive";
-}
-
-interface Worker {
-  id: string;
-  name: string;
-  employeeId: string;
-  role: string;
-  phone: string;
-  dailyWage: number;
-  status: "present" | "absent" | "not_marked";
-}
+import { useData } from "@/contexts/DataContext";
+import { Site, Worker, Transaction } from "@/types";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 interface SiteAttendanceProps {
   site: Site;
   onBack: () => void;
 }
 
-const mockWorkers: Worker[] = [
-  { id: "1", name: "Rajesh Kumar", employeeId: "EMP001", role: "Mason", phone: "+91 98765 43210", dailyWage: 800, status: "present" },
-  { id: "2", name: "Suresh Yadav", employeeId: "EMP002", role: "Helper", phone: "+91 98765 43211", dailyWage: 500, status: "present" },
-  { id: "3", name: "Amit Singh", employeeId: "EMP003", role: "Electrician", phone: "+91 98765 43212", dailyWage: 1200, status: "absent" },
-  { id: "4", name: "Ravi Sharma", employeeId: "EMP004", role: "Plumber", phone: "+91 98765 43213", dailyWage: 1000, status: "present" },
-  { id: "5", name: "Deepak Gupta", employeeId: "EMP005", role: "Helper", phone: "+91 98765 43214", dailyWage: 500, status: "not_marked" },
-  { id: "6", name: "Manoj Tiwari", employeeId: "EMP006", role: "Carpenter", phone: "+91 98765 43215", dailyWage: 900, status: "present" },
-  { id: "7", name: "Santosh Kumar", employeeId: "EMP007", role: "Mason", phone: "+91 98765 43216", dailyWage: 800, status: "not_marked" },
-  { id: "8", name: "Vinod Prasad", employeeId: "EMP008", role: "Helper", phone: "+91 98765 43217", dailyWage: 500, status: "absent" },
-];
-
 const SiteAttendance = ({ site, onBack }: SiteAttendanceProps) => {
-  const [workers, setWorkers] = useState<Worker[]>(mockWorkers);
+  const { 
+    workers: allWorkers, 
+    getSiteWorkers, 
+    addToSite, 
+    removeFromSite, 
+    markAttendance, 
+    getSiteAttendance, 
+    attendance,
+    transactions, 
+    addTransaction,
+    getSiteTransactions
+  } = useData();
+
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [currentView, setCurrentView] = useState("attendance");
+  const [isAddWorkerOpen, setIsAddWorkerOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  
+  // Transaction State
+  const [isAddTransactionOpen, setIsAddTransactionOpen] = useState(false);
+  const [transactionType, setTransactionType] = useState<'client_payment' | 'labor_payment' | 'expense'>('client_payment');
+  const [transactionAmount, setTransactionAmount] = useState("");
+  const [transactionDesc, setTransactionDesc] = useState("");
+  const [transactionDate, setTransactionDate] = useState<Date>(new Date());
+  const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
 
-  const markAttendance = (workerId: string, status: "present" | "absent") => {
-    setWorkers(prev => prev.map(worker => {
-      if (worker.id === workerId) {
-        return {
-          ...worker,
-          status
-        };
-      }
-      return worker;
-    }));
+  // Get active roster for this site
+  const activeSiteWorkers = getSiteWorkers(site.id);
+
+  // Get attendance for selected date
+  const dateStr = format(selectedDate, "yyyy-MM-dd");
+  const dailyAttendance = getSiteAttendance(site.id, dateStr);
+
+  // LOGIC FIX: Show workers who are active OR have attendance on this day (even if removed later)
+  const workerIdsWithAttendance = dailyAttendance.map(r => r.workerId);
+  const displayWorkers = allWorkers.filter(w => 
+    activeSiteWorkers.some(aw => aw.id === w.id) || workerIdsWithAttendance.includes(w.id)
+  );
+
+  const handleMarkAttendance = (worker: Worker, status: 'present' | 'absent' | 'half_day') => {
+    let wage = 0;
+    if (status === 'present') wage = worker.defaultDailyWage;
+    if (status === 'half_day') wage = worker.defaultDailyWage / 2;
+    // Absent wage = 0
+
+    markAttendance({
+      workerId: worker.id,
+      siteId: site.id,
+      date: dateStr,
+      status,
+      wage
+    });
   };
 
-  const addWorker = (worker: Omit<Worker, "id" | "status">) => {
-    const newWorker: Worker = {
-      ...worker,
-      id: Date.now().toString(),
-      status: "not_marked"
-    };
-    setWorkers(prev => [...prev, newWorker]);
+  const handleAddTransaction = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!transactionAmount || !transactionDesc) return;
+
+    addTransaction({
+      siteId: site.id,
+      date: format(transactionDate, "yyyy-MM-dd"),
+      type: transactionType,
+      amount: parseFloat(transactionAmount),
+      description: transactionDesc,
+      paymentMode: 'cash', // Default to cash for now
+      workerId: transactionType === 'labor_payment' ? selectedWorkerId : undefined
+    });
+
+    setIsAddTransactionOpen(false);
+    setTransactionAmount("");
+    setTransactionDesc("");
+    setTransactionDate(new Date());
+    setSelectedWorkerId("");
   };
 
-  const presentWorkers = workers.filter(w => w.status === "present").length;
-  const absentWorkers = workers.filter(w => w.status === "absent").length;
-  const notMarkedWorkers = workers.filter(w => w.status === "not_marked").length;
-  const dailyCost = workers
-    .filter(w => w.status === "present")
-    .reduce((sum, w) => sum + w.dailyWage, 0);
+  // Stats for the day
+  const presentCount = dailyAttendance.filter(r => r.status === 'present').length;
+  const absentCount = dailyAttendance.filter(r => r.status === 'absent').length;
+  const totalDailyCost = dailyAttendance.reduce((sum, r) => sum + r.wage, 0);
 
-  if (currentView === "management") {
-    return (
-      <WorkerManagement 
-        workers={workers}
-        onAddWorker={addWorker}
-        onBack={() => setCurrentView("attendance")}
-        onUpdateWorker={(workerId, updatedWorker) => {
-          setWorkers(prev => prev.map(w => w.id === workerId ? { ...updatedWorker, id: workerId, status: w.status } : w));
-        }}
-        onDeleteWorker={(workerId) => {
-          setWorkers(prev => prev.filter(w => w.id !== workerId));
-        }}
-      />
-    );
-  }
+  // Filter master list for "Add Worker" dialog
+  // Exclude workers already displayed
+  const availableWorkers = allWorkers.filter(
+    w => !displayWorkers.find(dw => dw.id === w.id) && 
+    (w.name.toLowerCase().includes(searchTerm.toLowerCase()) || w.role.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
-  if (currentView === "reports") {
-    return (
-      <AttendanceReports 
-        workers={workers}
-        siteName={site.name}
-        onBack={() => setCurrentView("attendance")}
-      />
-    );
-  }
+  // Financial Stats
+  const siteTransactions = getSiteTransactions(site.id);
+  const totalClientReceived = siteTransactions.filter(t => t.type === 'client_payment').reduce((sum, t) => sum + t.amount, 0);
+  const totalLaborPaid = siteTransactions.filter(t => t.type === 'labor_payment').reduce((sum, t) => sum + t.amount, 0);
+  const totalExpenses = siteTransactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
+  const balance = totalClientReceived - totalLaborPaid - totalExpenses;
+
+  // Report Calculations
+  const siteTotalAttendance = attendance.filter(r => r.siteId === site.id);
+  const siteTotalCost = siteTotalAttendance.reduce((sum, r) => sum + r.wage, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -112,215 +126,431 @@ const SiteAttendance = ({ site, onBack }: SiteAttendanceProps) => {
           <div className="flex items-center gap-4">
             <Button variant="outline" onClick={onBack}>
               <ArrowLeft className="h-4 w-4" />
-              Back to Sites
+              Back
             </Button>
             <div>
               <h1 className="text-3xl font-bold">{site.name}</h1>
               <p className="text-muted-foreground">{site.location}</p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button 
-              variant={currentView === "attendance" ? "default" : "outline"} 
-              onClick={() => setCurrentView("attendance")}
-            >
-              <Users className="h-4 w-4" />
-              Attendance
-            </Button>
-            <Button 
-              variant={currentView === "management" ? "default" : "outline"} 
-              onClick={() => setCurrentView("management")}
-            >
-              <Plus className="h-4 w-4" />
-              Manage Workers
-            </Button>
-            <Button 
-              variant={currentView === "reports" ? "default" : "outline"} 
-              onClick={() => setCurrentView("reports")}
-            >
-              <BarChart3 className="h-4 w-4" />
-              Reports
-            </Button>
-          </div>
         </div>
 
-        {/* Date Selector and Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mb-8">
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-primary/10 rounded-lg">
-                  <CalendarIcon className="h-6 w-6 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-muted-foreground mb-2">Select Date</p>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !selectedDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={(date) => date && setSelectedDate(date)}
-                        initialFocus
-                        className={cn("p-3 pointer-events-auto")}
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <Tabs defaultValue="attendance" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl">
+            <TabsTrigger value="attendance">Daily Attendance</TabsTrigger>
+            <TabsTrigger value="payments">Payments & Expenses</TabsTrigger>
+            <TabsTrigger value="reports">Project Report</TabsTrigger>
+          </TabsList>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-success/10 rounded-lg">
-                  <CheckCircle2 className="h-6 w-6 text-success" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Present</p>
-                  <p className="text-2xl font-bold text-success">{presentWorkers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {/* ATTENDANCE TAB */}
+          <TabsContent value="attendance" className="space-y-6">
+            <div className="flex justify-between items-center bg-card p-3 rounded-lg border shadow-sm">
+               <Button variant="ghost" size="icon" onClick={() => setSelectedDate(subDays(selectedDate, 1))}>
+                 <ChevronLeft className="h-5 w-5" />
+               </Button>
+               
+               <div className="flex items-center gap-2">
+                 <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="ghost" className="font-semibold text-lg hover:bg-transparent">
+                      <CalendarIcon className="mr-2 h-5 w-5" />
+                      {format(selectedDate, "MMM dd, yyyy")}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar mode="single" selected={selectedDate} onSelect={(d) => d && setSelectedDate(d)} initialFocus />
+                  </PopoverContent>
+                </Popover>
+               </div>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-destructive/10 rounded-lg">
-                  <XCircle className="h-6 w-6 text-destructive" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Absent</p>
-                  <p className="text-2xl font-bold text-destructive">{absentWorkers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+               <Button variant="ghost" size="icon" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
+                 <ChevronRight className="h-5 w-5" />
+               </Button>
+            </div>
 
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-warning/10 rounded-lg">
-                  <Clock className="h-6 w-6 text-warning" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Not Marked</p>
-                  <p className="text-2xl font-bold text-warning">{notMarkedWorkers}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4">
-                <div className="p-3 bg-accent/10 rounded-lg">
-                  <IndianRupee className="h-6 w-6 text-accent" />
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Daily Cost</p>
-                  <p className="text-2xl font-bold text-accent">₹{dailyCost}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Workers List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Worker Attendance
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {workers.map((worker) => (
-                <div key={worker.id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div>
-                        <h3 className="font-medium">{worker.name}</h3>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>ID: {worker.employeeId}</span>
-                          <span>Role: {worker.role}</span>
-                          <span>Daily Wage: ₹{worker.dailyWage}</span>
-                          <span>Phone: {worker.phone}</span>
+            <div className="flex justify-end">
+               <Dialog open={isAddWorkerOpen} onOpenChange={setIsAddWorkerOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Add Labor to Site
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Add Worker from Master List</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input 
+                      placeholder="Search workers..." 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                    <div className="h-[300px] overflow-y-auto space-y-2">
+                      {availableWorkers.map(worker => (
+                        <div key={worker.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent/50">
+                          <div>
+                            <p className="font-medium">{worker.name}</p>
+                            <p className="text-xs text-muted-foreground">{worker.role} • ₹{worker.defaultDailyWage}/day</p>
+                          </div>
+                          <Button size="sm" onClick={() => {
+                            addToSite(site.id, worker.id);
+                            setIsAddWorkerOpen(false);
+                          }}>
+                            Add
+                          </Button>
                         </div>
-                      </div>
+                      ))}
+                      {availableWorkers.length === 0 && (
+                         <div className="text-center py-4">
+                           <p className="text-muted-foreground mb-2">No active available workers found.</p>
+                           <p className="text-xs text-muted-foreground">Go to "Manage Master Workers" on home page to add more people.</p>
+                         </div>
+                      )}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-3">
-                    <Badge
-                      variant={
-                        worker.status === "present" ? "default" : 
-                        worker.status === "absent" ? "destructive" : 
-                        "secondary"
-                      }
-                      className={
-                        worker.status === "present" ? "bg-success hover:bg-success-hover" :
-                        worker.status === "absent" ? "" :
-                        "bg-warning hover:bg-warning-hover"
-                      }
-                    >
-                      {worker.status === "present" ? "Present" : 
-                       worker.status === "absent" ? "Absent" : 
-                       "Not Marked"}
-                    </Badge>
-
-                    {worker.status === "not_marked" && (
-                      <div className="flex gap-2">
-                        <Button 
-                          variant="success" 
-                          size="sm"
-                          onClick={() => markAttendance(worker.id, "present")}
-                        >
-                          Present
-                        </Button>
-                        <Button 
-                          variant="destructive" 
-                          size="sm"
-                          onClick={() => markAttendance(worker.id, "absent")}
-                        >
-                          Absent
-                        </Button>
-                      </div>
-                    )}
-
-                    {worker.status !== "not_marked" && (
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => {
-                          setWorkers(prev => prev.map(w => 
-                            w.id === worker.id ? { ...w, status: "not_marked" } : w
-                          ));
-                        }}
-                      >
-                        Reset
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                </DialogContent>
+              </Dialog>
             </div>
-          </CardContent>
-        </Card>
+
+            {/* Daily Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="p-2 bg-success/10 rounded-full text-success"><CheckCircle2 className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Present</p>
+                    <p className="font-bold text-lg">{presentCount}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="p-2 bg-destructive/10 rounded-full text-destructive"><XCircle className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Absent</p>
+                    <p className="font-bold text-lg">{absentCount}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex items-center gap-4">
+                  <div className="p-2 bg-accent/10 rounded-full text-accent"><IndianRupee className="h-5 w-5" /></div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Daily Cost</p>
+                    <p className="font-bold text-lg">₹{totalDailyCost}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Attendance Matrix */}
+            <div className="grid gap-3">
+              {displayWorkers.map(worker => {
+                const record = dailyAttendance.find(r => r.workerId === worker.id);
+                const status = record?.status || 'not_marked';
+                const isRemovedFromRoster = !activeSiteWorkers.find(aw => aw.id === worker.id);
+
+                return (
+                  <Card key={worker.id} className={cn("overflow-hidden", isRemovedFromRoster && "opacity-75 border-dashed")}>
+                    <div className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="relative">
+                          <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
+                            {worker.name.charAt(0)}
+                          </div>
+                          {isRemovedFromRoster && (
+                             <div className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full" title="Removed from roster" />
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-medium flex items-center gap-2">
+                             {worker.name}
+                             {isRemovedFromRoster && <span className="text-[10px] bg-secondary px-1 rounded text-muted-foreground">(History)</span>}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">{worker.role} • ₹{worker.defaultDailyWage}/day</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <div className="flex bg-secondary p-1 rounded-lg">
+                          <Button 
+                            variant={status === 'present' ? 'default' : 'ghost'} 
+                            size="sm" 
+                            className={cn("h-8 px-3", status === 'present' && "bg-success hover:bg-success/90")}
+                            onClick={() => handleMarkAttendance(worker, 'present')}
+                          >
+                            P
+                          </Button>
+                          <Button 
+                            variant={status === 'half_day' ? 'default' : 'ghost'} 
+                            size="sm" 
+                            className={cn("h-8 px-3", status === 'half_day' && "bg-warning hover:bg-warning/90")}
+                            onClick={() => handleMarkAttendance(worker, 'half_day')}
+                          >
+                            HD
+                          </Button>
+                          <Button 
+                            variant={status === 'absent' ? 'default' : 'ghost'} 
+                            size="sm" 
+                            className={cn("h-8 px-3", status === 'absent' && "bg-destructive hover:bg-destructive/90")}
+                            onClick={() => handleMarkAttendance(worker, 'absent')}
+                          >
+                            A
+                          </Button>
+                        </div>
+
+                        {!isRemovedFromRoster ? (
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-56">
+                              <p className="text-sm font-medium mb-1">Remove from this Site?</p>
+                              <p className="text-xs text-muted-foreground mb-3">Does not delete attendance history.</p>
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                className="w-full"
+                                onClick={() => removeFromSite(site.id, worker.id)}
+                              >
+                                Confirm Remove
+                              </Button>
+                            </PopoverContent>
+                          </Popover>
+                        ) : (
+                          <div className="w-8" />
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+              {displayWorkers.length === 0 && (
+                <div className="text-center py-12 border-2 border-dashed rounded-lg bg-secondary/20">
+                  <p className="text-muted-foreground">No workers assigned to this site yet.</p>
+                  <Button variant="link" onClick={() => setIsAddWorkerOpen(true)}>Add Labor Now</Button>
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          {/* PAYMENTS TAB */}
+          <TabsContent value="payments" className="space-y-6">
+            {/* Same as before... */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4">
+                   <p className="text-sm text-muted-foreground">Client Received</p>
+                   <p className="text-2xl font-bold text-success">₹{totalClientReceived}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                   <p className="text-sm text-muted-foreground">Labor Paid</p>
+                   <p className="text-2xl font-bold text-destructive">₹{totalLaborPaid}</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                   <p className="text-sm text-muted-foreground">Site Balance</p>
+                   <p className={cn("text-2xl font-bold", balance >= 0 ? "text-primary" : "text-destructive")}>
+                     ₹{balance}
+                   </p>
+                </CardContent>
+              </Card>
+              <div className="flex items-center justify-end">
+                <Dialog open={isAddTransactionOpen} onOpenChange={setIsAddTransactionOpen}>
+                  <DialogTrigger asChild>
+                    <Button size="lg" className="w-full md:w-auto">
+                       <Plus className="mr-2 h-4 w-4" />
+                       Add Transaction
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                       <DialogTitle>Add New Transaction</DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAddTransaction} className="space-y-4 pt-4">
+                      <div className="space-y-2">
+                        <Label>Transaction Type</Label>
+                        <Select value={transactionType} onValueChange={(v: any) => setTransactionType(v)}>
+                           <SelectTrigger>
+                             <SelectValue />
+                           </SelectTrigger>
+                           <SelectContent>
+                             <SelectItem value="client_payment">Client Payment (Received)</SelectItem>
+                             <SelectItem value="labor_payment">Labor Payment (Paid)</SelectItem>
+                             <SelectItem value="expense">Other Expense (Paid)</SelectItem>
+                           </SelectContent>
+                        </Select>
+                      </div>
+
+                      {transactionType === 'labor_payment' && (
+                        <div className="space-y-2">
+                          <Label>Select Worker</Label>
+                          <Select value={selectedWorkerId} onValueChange={setSelectedWorkerId}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Choose worker" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allWorkers.map(w => (
+                                <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                         <Label>Date</Label>
+                         <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" className="w-full justify-start text-left font-normal">
+                                <CalendarIcon className="mr-2 h-4 w-4" />
+                                {format(transactionDate, "PPP")}
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0">
+                               <Calendar mode="single" selected={transactionDate} onSelect={(d) => d && setTransactionDate(d)} initialFocus />
+                            </PopoverContent>
+                         </Popover>
+                      </div>
+
+                      <div className="space-y-2">
+                         <Label>Amount (₹)</Label>
+                         <Input 
+                            type="number" 
+                            placeholder="0.00" 
+                            value={transactionAmount}
+                            onChange={(e) => setTransactionAmount(e.target.value)}
+                         />
+                      </div>
+
+                      <div className="space-y-2">
+                         <Label>Description</Label>
+                         <Textarea 
+                            placeholder="e.g. Advance payment, Material purchase, etc."
+                            value={transactionDesc}
+                            onChange={(e) => setTransactionDesc(e.target.value)}
+                         />
+                      </div>
+
+                      <Button type="submit" className="w-full">Save Transaction</Button>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+
+             <Card>
+               <CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
+               <CardContent>
+                  <div className="space-y-4">
+                     {siteTransactions.length === 0 ? (
+                        <p className="text-center text-muted-foreground py-8">No transactions recorded yet.</p>
+                     ) : (
+                        siteTransactions.slice().reverse().map(t => (
+                           <div key={t.id} className="flex justify-between items-center p-3 border rounded-lg hover:bg-accent/5">
+                              <div className="flex items-start gap-3">
+                                 <div className={cn("p-2 rounded-full", 
+                                    t.type === 'client_payment' ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"
+                                 )}>
+                                    {t.type === 'client_payment' ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                                 </div>
+                                 <div>
+                                    <p className="font-medium">
+                                       {t.type === 'client_payment' ? "Client Payment" : 
+                                        t.type === 'labor_payment' ? `Paid to ${allWorkers.find(w => w.id === t.workerId)?.name || 'Worker'}` : 
+                                        "Expense"}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">{t.description}</p>
+                                    <p className="text-xs text-muted-foreground">{format(new Date(t.date), "MMM dd, yyyy")}</p>
+                                 </div>
+                              </div>
+                              <span className={cn("font-bold", 
+                                 t.type === 'client_payment' ? "text-success" : "text-destructive"
+                              )}>
+                                 {t.type === 'client_payment' ? "+" : "-"} ₹{t.amount}
+                              </span>
+                           </div>
+                        ))
+                     )}
+                  </div>
+               </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* REPORTS TAB */}
+          <TabsContent value="reports" className="space-y-6">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <FileText className="h-5 w-5" />
+                      Project Summary
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-muted-foreground">Total Labor Cost (Attn)</span>
+                      <span className="font-bold text-xl">₹{siteTotalCost}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                      <span className="text-muted-foreground">Actual Labor Paid</span>
+                      <span className="font-bold text-xl text-destructive">₹{totalLaborPaid}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2 border-b">
+                       <span className="text-muted-foreground">Pending Labor Dues</span>
+                       <span className={cn("font-bold text-xl", siteTotalCost - totalLaborPaid > 0 ? "text-warning" : "text-success")}>
+                          ₹{siteTotalCost - totalLaborPaid}
+                       </span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                     <CardTitle>Worker Wise Cost</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                     <div className="max-h-[300px] overflow-y-auto space-y-3">
+                        {displayWorkers.map(worker => {
+                           const workerRecords = siteTotalAttendance.filter(r => r.workerId === worker.id);
+                           const totalEarned = workerRecords.reduce((sum, r) => sum + r.wage, 0);
+                           const daysWorked = workerRecords.filter(r => r.status === 'present' || r.status === 'half_day').length;
+                           
+                           // Calculate how much collected
+                           const paidToWorker = siteTransactions
+                              .filter(t => t.type === 'labor_payment' && t.workerId === worker.id)
+                              .reduce((sum, t) => sum + t.amount, 0);
+
+                           if(daysWorked === 0) return null;
+
+                           return (
+                             <div key={worker.id} className="flex justify-between items-center p-2 bg-secondary/10 rounded">
+                                <div>
+                                   <p className="font-medium text-sm">{worker.name}</p>
+                                   <p className="text-xs text-muted-foreground">{daysWorked} days</p>
+                                </div>
+                                <div className="text-right">
+                                   <p className="font-bold text-sm">Earned: ₹{totalEarned}</p>
+                                   <p className={cn("text-xs font-medium", totalEarned - paidToWorker > 0 ? "text-destructive" : "text-success")}>
+                                      Due: ₹{totalEarned - paidToWorker}
+                                   </p>
+                                </div>
+                             </div>
+                           );
+                        })}
+                        {displayWorkers.length === 0 && <p className="text-muted-foreground text-sm">No data yet.</p>}
+                     </div>
+                  </CardContent>
+                </Card>
+             </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
