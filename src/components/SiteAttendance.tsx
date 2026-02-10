@@ -120,26 +120,22 @@ const SiteAttendance = ({ site, onBack }: SiteAttendanceProps) => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="px-4 py-5 sm:py-8 max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">{site.name}</h1>
-              <p className="text-muted-foreground">{site.location}</p>
-            </div>
-          </div>
+        <div className="mb-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="mb-1">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+          <h1 className="text-xl sm:text-2xl font-bold">{site.name}</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">{site.location}</p>
         </div>
 
-        <Tabs defaultValue="attendance" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl">
-            <TabsTrigger value="attendance">Daily Attendance</TabsTrigger>
-            <TabsTrigger value="payments">Payments & Expenses</TabsTrigger>
-            <TabsTrigger value="reports">Project Report</TabsTrigger>
+        <Tabs defaultValue="attendance" className="space-y-4 sm:space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="attendance" className="text-xs sm:text-sm">Attendance</TabsTrigger>
+            <TabsTrigger value="payments" className="text-xs sm:text-sm">Payments</TabsTrigger>
+            <TabsTrigger value="reports" className="text-xs sm:text-sm">Report</TabsTrigger>
           </TabsList>
 
           {/* ATTENDANCE TAB */}
@@ -214,31 +210,31 @@ const SiteAttendance = ({ site, onBack }: SiteAttendanceProps) => {
             </div>
 
             {/* Daily Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
               <Card>
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="p-2 bg-success/10 rounded-full text-success"><CheckCircle2 className="h-5 w-5" /></div>
+                <CardContent className="p-2.5 sm:p-4 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left">
+                  <div className="p-1.5 bg-green-100 rounded-full text-green-600"><CheckCircle2 className="h-4 w-4" /></div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Present</p>
-                    <p className="font-bold text-lg">{presentCount}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Present</p>
+                    <p className="font-bold text-base sm:text-lg">{presentCount}</p>
                   </div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="p-2 bg-destructive/10 rounded-full text-destructive"><XCircle className="h-5 w-5" /></div>
+                <CardContent className="p-2.5 sm:p-4 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left">
+                  <div className="p-1.5 bg-red-100 rounded-full text-red-600"><XCircle className="h-4 w-4" /></div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Absent</p>
-                    <p className="font-bold text-lg">{absentCount}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Absent</p>
+                    <p className="font-bold text-base sm:text-lg">{absentCount}</p>
                   </div>
                 </CardContent>
               </Card>
               <Card>
-                <CardContent className="p-4 flex items-center gap-4">
-                  <div className="p-2 bg-accent/10 rounded-full text-accent"><IndianRupee className="h-5 w-5" /></div>
+                <CardContent className="p-2.5 sm:p-4 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left">
+                  <div className="p-1.5 bg-blue-100 rounded-full text-blue-600"><IndianRupee className="h-4 w-4" /></div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Daily Cost</p>
-                    <p className="font-bold text-lg">₹{totalDailyCost}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground">Cost</p>
+                    <p className="font-bold text-base sm:text-lg">₹{totalDailyCost}</p>
                   </div>
                 </CardContent>
               </Card>

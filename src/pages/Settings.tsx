@@ -54,13 +54,13 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="flex items-center gap-4 mb-8">
-          <Button variant="ghost" onClick={() => navigate("/")}>
-            <ArrowLeft className="h-5 w-5 mr-2" />
+      <div className="px-4 py-5 sm:py-8 max-w-2xl mx-auto">
+        <div className="mb-5">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
             Back
           </Button>
-          <h1 className="text-3xl font-bold">Data & Settings</h1>
+          <h1 className="text-xl sm:text-2xl font-bold mt-1">Data & Settings</h1>
         </div>
 
         <div className="space-y-6">

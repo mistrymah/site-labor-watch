@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { useData } from "@/contexts/DataContext";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Edit, Trash2, Users, Phone, IndianRupee, ArrowLeft } from "lucide-react";
+import { Plus, Edit, Trash2, Phone, IndianRupee, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Worker } from "@/types";
@@ -26,22 +26,13 @@ const Workers = () => {
   });
 
   const resetForm = () => {
-    setFormData({
-      name: "",
-      role: "",
-      phone: "",
-      defaultDailyWage: ""
-    });
+    setFormData({ name: "", role: "", phone: "", defaultDailyWage: "" });
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name || !formData.role || !formData.defaultDailyWage) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive"
-      });
+      toast({ title: "Error", description: "Please fill in all required fields", variant: "destructive" });
       return;
     }
 
@@ -55,11 +46,11 @@ const Workers = () => {
     if (editingWorker) {
       updateWorker(editingWorker.id, workerData);
       setEditingWorker(null);
-      toast({ title: "Success", description: "Worker updated successfully" });
+      toast({ title: "Success", description: "Worker updated" });
     } else {
       addWorker(workerData);
       setIsAddDialogOpen(false);
-      toast({ title: "Success", description: "Worker added to master list" });
+      toast({ title: "Success", description: "Worker added" });
     }
     resetForm();
   };
@@ -75,7 +66,7 @@ const Workers = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm("Are you sure? This will remove the worker from the master list.")) {
+    if (window.confirm("Remove this worker from master list?")) {
       deleteWorker(id);
       toast({ title: "Deleted", description: "Worker removed" });
     }
@@ -88,33 +79,29 @@ const Workers = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" onClick={() => navigate("/")}>
-              <ArrowLeft className="h-5 w-5 mr-2" />
-              Back
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Master Worker List</h1>
-              <p className="text-muted-foreground">Manage your entire labor pool here (Total: {workers.length})</p>
-            </div>
+      <div className="px-4 py-5 sm:py-8 max-w-6xl mx-auto">
+        {/* Header - stacked on mobile */}
+        <div className="flex items-center gap-2 mb-1">
+          <Button variant="ghost" size="sm" onClick={() => navigate("/")}>
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back
+          </Button>
+        </div>
+        
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-bold">Master Worker List</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">Total: {workers.length} workers</p>
           </div>
           
           <Dialog open={isAddDialogOpen || !!editingWorker} onOpenChange={(open) => {
-            if (!open) {
-              setIsAddDialogOpen(false);
-              setEditingWorker(null);
-              resetForm();
-            } else {
-              setIsAddDialogOpen(true);
-            }
+            if (!open) { setIsAddDialogOpen(false); setEditingWorker(null); resetForm(); }
+            else { setIsAddDialogOpen(true); }
           }}>
             <DialogTrigger asChild>
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add New Worker
+              <Button size="sm" onClick={() => setIsAddDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Worker
               </Button>
             </DialogTrigger>
             <DialogContent>
@@ -145,45 +132,44 @@ const Workers = () => {
         </div>
 
         {/* Search */}
-        <div className="mb-6">
+        <div className="mb-4">
           <Input 
-            placeholder="Search workers by name or role..." 
+            placeholder="Search by name or role..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="max-w-md"
           />
         </div>
 
         {/* List */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-2 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 sm:space-y-0">
           {filteredWorkers.map(worker => (
             <Card key={worker.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-4">
+              <CardContent className="p-3 sm:p-4">
                 <div className="flex justify-between items-start">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold">
+                  <div className="flex items-center gap-2.5">
+                    <div className="h-9 w-9 bg-primary/10 rounded-full flex items-center justify-center text-primary font-bold text-sm shrink-0">
                       {worker.name.charAt(0)}
                     </div>
-                    <div>
-                      <h3 className="font-semibold">{worker.name}</h3>
-                      <p className="text-sm text-muted-foreground">{worker.role}</p>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-sm truncate">{worker.name}</h3>
+                      <p className="text-xs text-muted-foreground">{worker.role}</p>
                     </div>
                   </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(worker)}>
-                      <Edit className="h-4 w-4" />
+                  <div className="flex gap-0.5 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleEdit(worker)}>
+                      <Edit className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDelete(worker.id)}>
-                      <Trash2 className="h-4 w-4" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => handleDelete(worker.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 </div>
-                <div className="mt-4 flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="mt-2.5 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-muted-foreground">
                     <Phone className="h-3 w-3" />
                     {worker.phone || "No phone"}
                   </div>
-                  <div className="flex items-center gap-1 font-medium">
+                  <div className="flex items-center gap-0.5 font-medium">
                     <IndianRupee className="h-3 w-3" />
                     {worker.defaultDailyWage}/day
                   </div>
@@ -192,7 +178,7 @@ const Workers = () => {
             </Card>
           ))}
           {filteredWorkers.length === 0 && (
-            <div className="col-span-full text-center py-10 text-muted-foreground">
+            <div className="col-span-full text-center py-10 text-muted-foreground text-sm">
               No workers found. Add some to get started!
             </div>
           )}
