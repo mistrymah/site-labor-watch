@@ -104,44 +104,45 @@ const Index = () => {
         </div>
 
         {/* Dashboard Stats - horizontal scroll on mobile */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+        {/* Dashboard Stats - Stack on mobile, grid on desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6">
           <Card>
-            <CardContent className="p-3 sm:p-5">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 text-center sm:text-left">
-                <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary/10 rounded-lg shrink-0">
                   <Building2 className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Active Sites</p>
-                  <p className="text-xl sm:text-2xl font-bold">{activeSites}</p>
+                  <p className="text-sm text-muted-foreground">Active Sites</p>
+                  <p className="text-2xl font-bold">{activeSites}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-3 sm:p-5">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 text-center sm:text-left">
-                <div className="p-2 bg-orange-100 rounded-lg shrink-0">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-orange-100 rounded-lg shrink-0">
                   <Users className="h-5 w-5 text-orange-600" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Workers</p>
-                  <p className="text-xl sm:text-2xl font-bold">{workers.length}</p>
+                  <p className="text-sm text-muted-foreground">Workers</p>
+                  <p className="text-2xl font-bold">{workers.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardContent className="p-3 sm:p-5">
-              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-2 sm:gap-4 text-center sm:text-left">
-                <div className="p-2 bg-green-100 rounded-lg shrink-0">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-green-100 rounded-lg shrink-0">
                   <CheckCircle2 className="h-5 w-5 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-xs sm:text-sm text-muted-foreground">Present</p>
-                  <p className="text-xl sm:text-2xl font-bold">{presentToday}</p>
+                  <p className="text-sm text-muted-foreground">Present</p>
+                  <p className="text-2xl font-bold">{presentToday}</p>
                 </div>
               </div>
             </CardContent>

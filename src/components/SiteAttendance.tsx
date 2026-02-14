@@ -119,7 +119,7 @@ const SiteAttendance = ({ site, onBack }: SiteAttendanceProps) => {
   const siteTotalCost = siteTotalAttendance.reduce((sum, r) => sum + r.wage, 0);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full overflow-x-hidden">
       <div className="px-4 py-5 sm:py-8 max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-4">
@@ -210,9 +210,9 @@ const SiteAttendance = ({ site, onBack }: SiteAttendanceProps) => {
             </div>
 
             {/* Daily Stats */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <Card>
-                <CardContent className="p-2.5 sm:p-4 flex flex-col sm:flex-row items-center gap-1.5 sm:gap-3 text-center sm:text-left">
+                <CardContent className="p-4 sm:p-4 flex flex-row items-center gap-3 sm:gap-3 text-left">
                   <div className="p-1.5 bg-green-100 rounded-full text-green-600"><CheckCircle2 className="h-4 w-4" /></div>
                   <div>
                     <p className="text-[10px] sm:text-xs text-muted-foreground">Present</p>

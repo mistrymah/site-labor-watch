@@ -78,7 +78,7 @@ const Workers = () => {
   );
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full overflow-x-hidden">
       <div className="px-4 py-5 sm:py-8 max-w-6xl mx-auto">
         {/* Header - stacked on mobile */}
         <div className="flex items-center gap-2 mb-1">
@@ -141,7 +141,7 @@ const Workers = () => {
         </div>
 
         {/* List */}
-        <div className="space-y-2 sm:grid sm:grid-cols-2 lg:grid-cols-3 sm:gap-3 sm:space-y-0">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {filteredWorkers.map(worker => (
             <Card key={worker.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-3 sm:p-4">
