@@ -132,11 +132,13 @@ const SiteAttendance = ({ site, onBack }: SiteAttendanceProps) => {
         </div>
 
         <Tabs defaultValue="attendance" className="space-y-4 sm:space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="attendance" className="text-xs sm:text-sm">Attendance</TabsTrigger>
-            <TabsTrigger value="payments" className="text-xs sm:text-sm">Payments</TabsTrigger>
-            <TabsTrigger value="reports" className="text-xs sm:text-sm">Report</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 scrollbar-hide">
+            <TabsList className="w-full justify-start sm:grid sm:grid-cols-3 h-auto p-1 bg-muted/50 rounded-lg">
+              <TabsTrigger value="attendance" className="flex-1 min-w-[120px] text-xs sm:text-sm py-2">Attendance</TabsTrigger>
+              <TabsTrigger value="payments" className="flex-1 min-w-[120px] text-xs sm:text-sm py-2">Payments</TabsTrigger>
+              <TabsTrigger value="reports" className="flex-1 min-w-[120px] text-xs sm:text-sm py-2">Report</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* ATTENDANCE TAB */}
           <TabsContent value="attendance" className="space-y-6">

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Users, CheckCircle2, Plus, ArrowRight, UserCog, Settings as SettingsIcon } from "lucide-react";
+import { Building2, Users, CheckCircle2, Plus, ArrowRight, UserCog, Settings as SettingsIcon, Trash2 } from "lucide-react";
 import heroImage from "@/assets/hero-construction.jpg";
 import SiteAttendance from "@/components/SiteAttendance";
 import { useData } from "@/contexts/DataContext";
@@ -13,7 +13,7 @@ import { Site } from "@/types";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
-  const { sites, addSite, workers, attendance } = useData();
+  const { sites, addSite, deleteSite, workers, attendance } = useData();
   const [selectedSite, setSelectedSite] = useState<Site | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newSiteName, setNewSiteName] = useState("");
@@ -30,6 +30,13 @@ const Index = () => {
       setNewSiteName("");
       setNewSiteLocation("");
       setIsCreateDialogOpen(false);
+    }
+  };
+
+  const handleDeleteSite = (e: React.MouseEvent, siteId: string) => {
+    e.stopPropagation();
+    if (window.confirm("Are you sure you want to delete this site? All attendance and transaction data for this site will be lost.")) {
+       deleteSite(siteId);
     }
   };
 
@@ -175,8 +182,18 @@ const Index = () => {
               </CardHeader>
               <CardContent className="px-4 pb-3">
                 <div className="flex justify-between items-center text-xs text-muted-foreground mt-2">
-                  <span>Click to manage attendance</span>
-                  <ArrowRight className="h-3 w-3" />
+                  <span>Click to manage</span>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10 -my-1"
+                      onClick={(e) => handleDeleteSite(e, site.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <ArrowRight className="h-3 w-3" />
+                  </div>
                 </div>
               </CardContent>
             </Card>
