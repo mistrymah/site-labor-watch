@@ -1,40 +1,100 @@
 import { useState } from "react";
+
+declare global {
+  interface Window {
+    Capacitor: any;
+  }
+}
 import { useData } from "@/contexts/DataContext";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { ArrowLeft, Download, Upload, AlertTriangle, Database } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Share } from '@capacitor/share';
+import { Capacitor } from '@capacitor/core';
 
 const Settings = () => {
   const { workers, sites, allocations, attendance, transactions, importData } = useData();
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleExport = () => {
-    const data = {
-      workers,
-      sites,
-      allocations,
-      attendance,
-      transactions,
-      exportedAt: new Date().toISOString()
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `contractor_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    toast({ title: "Backup Downloaded", description: "Keep this file safe!" });
+  const handleExport = async () => {
+    try {
+      const data = {
+        workers,
+        sites,
+        allocations,
+        attendance,
+        transactions,
+        exportedAt: new Date().toISOString()
+      };
+      
+      const fileName = `contractor_backup_${new Date().toISOString().split('T')[0]}.json`;
+      const jsonString = JSON.stringify(data, null, 2);
+
+      // Check if we are running in Capacitor (on mobile)
+      const isNative = window.Capacitor?.isNativePlatform();
+
+      if (isNative) {
+        // Native: Write to filesystem and share
+        try {
+          const result = await Filesystem.writeFile({
+            path: fileName,
+            data: jsonString,
+            directory: Directory.Documents,
+            encoding: Encoding.UTF8,
+          });
+
+          await Share.share({
+            title: 'Backup Data',
+            text: 'Here is your backup file for Site Labor Watch.',
+            url: result.uri,
+            dialogTitle: 'Save Backup File',
+          });
+          
+          toast({ title: "Backup Ready", description: "Save the file to a safe location." });
+        } catch (err) {
+          console.error("Native export failed", err);
+          // Fallback to cache directory if documents fails (permissions)
+          try {
+             const result = await Filesystem.writeFile({
+              path: fileName,
+              data: jsonString,
+              directory: Directory.Cache,
+              encoding: Encoding.UTF8,
+            });
+            await Share.share({
+              title: 'Backup Data',
+              text: 'Here is your backup file for Site Labor Watch.',
+              url: result.uri,
+              dialogTitle: 'Save Backup File',
+            });
+          } catch (retryErr) {
+             toast({ title: "Export Failed", description: "Could not save backup file.", variant: "destructive" });
+          }
+        }
+      } else {
+        // Web: Use standard download
+        const blob = new Blob([jsonString], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        toast({ title: "Backup Downloaded", description: "File saved to downloads." });
+      }
+    } catch (error) {
+      console.error("Export error:", error);
+      toast({ title: "Export Error", description: "Something went wrong.", variant: "destructive" });
+    }
   };
 
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -43,8 +103,11 @@ const Settings = () => {
       try {
         const content = e.target?.result as string;
         const data = JSON.parse(content);
-        importData(data);
-        toast({ title: "Restore Successful", description: "Your data has been updated." });
+        if (importData(data)) {
+           toast({ title: "Restore Successful", description: "Your data has been updated." });
+        } else {
+           toast({ title: "Import Failed", description: "Invalid data format.", variant: "destructive" });
+        }
       } catch (error) {
         toast({ title: "Import Failed", description: "Invalid backup file.", variant: "destructive" });
       }
